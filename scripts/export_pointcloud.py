@@ -44,7 +44,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <span class="sw" style="background:#3388cc"></span>场景点(原始颜色)<br>
   <span class="sw" style="background:#00ff44"></span>重力方向(地面法向)<br>
   <span class="sw" style="background:#ffa500"></span>瓶身三维轴向(PCA)<br>
-  <span class="sw" style="background:#00ffff"></span>拟合地面平面(半透明)
+  <span class="sw" style="background:#00ffff"></span>地面拟合内点 + 拟合平面
 </div>
 <script>__THREE_JS__</script>
 <script>__ORBIT_JS__</script>
@@ -190,6 +190,9 @@ def main():
         rgb = frame[valid][:, ::-1][:, ::-1].copy()  # BGR→RGB
         is_bottle = bottle_mask[valid]
         rgb[is_bottle] = (0.45 * rgb[is_bottle] + 0.55 * np.array([255, 0, 255])).astype(np.uint8)
+        # 地面拟合内点染青色(先染地面再染瓶子,瓶子优先)
+        is_ground = (est.ground_inlier_mask(pts, valid) & ~bottle_mask)[valid]
+        rgb[is_ground] = (0.35 * rgb[is_ground] + 0.65 * np.array([0, 255, 255])).astype(np.uint8)
 
         # PLY: 全量
         ply_path = out_dir / f"{name}.ply"
@@ -208,6 +211,9 @@ def main():
         g_flip = np.array([g[0], -g[1], -g[2]])
         if bottle_sub.sum() > 50:
             bp = v_sub[bottle_sub]
+            # 深度带过滤:剔除 MoGe 深度失控的飞点(可能一直延伸到相机处)
+            zmed_b = float(np.median(bp[:, 2]))
+            bp = bp[np.abs(bp[:, 2] - zmed_b) < 0.5 * max(abs(med_z), 1e-6)]
             bc = bp.mean(axis=0)
             _, _, vt = np.linalg.svd(bp - bc, full_matrices=False)
             t = (bp - bc) @ vt[0]
@@ -219,18 +225,22 @@ def main():
             e1 = center + np.array([cam_dist * 0.3, 0.0, 0.0])
         gra = bc + g_flip * abs(med_z) * 0.35
 
-        # 地面平面四角(以画面下部点质心为心,跨度约 2 倍中位深度)
-        h, w = valid.shape
-        ys, xs = np.nonzero(valid)
-        low = ys > int(h * 0.55)
-        cg = flip(pts[valid][low].mean(axis=0)) if low.sum() else center
+        # 地面平面四角:中心=内点质心,范围=内点沿两个切向的实际分布(p98),忠实反映拟合结果
+        pc = est.plane_center
+        cg = flip(pc)
+        ground_pts = view[is_ground] if is_ground.sum() > 100 else None
         n_up = g_flip
-        e1 = np.cross(n_up, [0.0, 0.0, 1.0])
-        e1 = e1 / max(np.linalg.norm(e1), 1e-9)
-        e2 = np.cross(n_up, e1)
-        s = abs(med_z) * 1.2
-        quad = [cg + e1 * s + e2 * s, cg - e1 * s + e2 * s,
-                cg - e1 * s - e2 * s, cg + e1 * s - e2 * s]
+        qt1 = np.cross(n_up, [0.0, 0.0, 1.0])
+        qt1 = qt1 / max(np.linalg.norm(qt1), 1e-9)
+        qt2 = np.cross(n_up, qt1)
+        if ground_pts is not None:
+            rel = ground_pts - cg
+            s1 = float(np.percentile(np.abs(rel @ qt1), 98)) + 1e-3
+            s2 = float(np.percentile(np.abs(rel @ qt2), 98)) + 1e-3
+        else:
+            s1 = s2 = abs(med_z) * 1.2
+        quad = [cg + qt1 * s1 + qt2 * s2, cg - qt1 * s1 + qt2 * s2,
+                cg - qt1 * s1 - qt2 * s2, cg + qt1 * s1 - qt2 * s2]
 
         blob = v_sub.astype("<f4").tobytes() + rgb_sub.astype(np.uint8).tobytes()
         b64 = base64.b64encode(blob).decode("ascii")

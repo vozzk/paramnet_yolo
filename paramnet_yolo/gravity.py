@@ -132,7 +132,23 @@ class MoGeGravity:
         if float(n @ c) > 0:
             n = -n
         self.gravity = n.astype(np.float64)
+        # 存下拟合结果供可视化:内点像素掩码 + 平面中心(内点质心)
+        self.plane_center = c.astype(np.float64)
+        self.ground_pixel_mask = np.zeros_like(valid)
+        self.ground_pixel_mask[ys[best_inliers], xs[best_inliers]] = True
         return self.gravity
+
+    def ground_inlier_mask(self, points, valid, tol_frac=0.02):
+        """按已拟合的平面给任意一帧分类地面内点(无需重新 RANSAC)。"""
+        if self.plane_center is None:
+            raise RuntimeError("请先调用 fit_ground_gravity()")
+        ys, xs = np.nonzero(valid)
+        P = points[ys, xs]
+        tol = tol_frac * float(np.median(np.abs(P[:, 2]))) + 1e-6
+        inl = np.abs((P - self.plane_center) @ self.gravity) < tol
+        m = np.zeros_like(valid)
+        m[ys[inl], xs[inl]] = True
+        return m
 
     def _estimate_focal(self, points, valid):
         """从点图反推焦距(像素):x = f·X/Z + cx,取双方向中位数。"""

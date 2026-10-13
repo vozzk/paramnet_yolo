@@ -134,7 +134,7 @@ def main():
 
             if args.moge and mask is not None and mask.sum() >= 10:
                 # 主管线:mask 内 3D 点 PCA vs 地面法向
-                bottle_pts = est.points_in_mask(mask.astype(bool))
+                bottle_pts = est.points_in_mask(mask.astype(bool), margin=0.5)
                 tipped, angle, elong = judge.judge_by_3d(bottle_pts)
                 if tipped is None:
                     continue

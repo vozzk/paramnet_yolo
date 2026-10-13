@@ -122,7 +122,7 @@ def main():
                     cv2.drawContours(frame, cnts, -1, (255, 0, 255), 2)  # 紫色轮廓=SAM3分割边界
 
             if args.moge and mask is not None and mask.sum() >= 10:
-                bottle_pts = est.points_in_mask(mask.astype(bool))
+                bottle_pts = est.points_in_mask(mask.astype(bool), margin=0.5)
                 tipped, angle, elong = judge.judge_by_3d(bottle_pts)
                 if tipped is None:
                     continue

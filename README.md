@@ -23,7 +23,8 @@ paramnet_yolo/
 uv sync                                            # 基础环境(torch 用本地 wheel)
 uv pip install --no-deps -e E:\code\MoGe -e E:\code\utils3d-moge -e E:\code\FlexGEMM
                                                    # ⚠️ uv sync 会移除这三个包,需重跑此行
-uv run python scripts/run_image.py --image xxx.jpg --moge --sam3 --save result.jpg
+uv run python scripts/run_image.py --image "D:/PycharmProjects/yolo_26/ultralytics/test_image/9.jpg" --moge --sam3 --save result.jpg
+uv run python scripts/export_pointcloud.py --image "D:/PycharmProjects/yolo_26/ultralytics/test_image/9.jpg"
 ```
 
 ## 三级判据(按可用性自动选择)
