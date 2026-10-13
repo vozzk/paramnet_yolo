@@ -1,0 +1,11 @@
+{
+  "pole_vs_field_max_deg": 8.537736462515939e-07,
+  "crop_max_deg": 0.0,
+  "scale_wrongcomp_max_deg": 16.26020446672114,
+  "scale_wrongcomp_mean_deg": 12.42403204571627,
+  "scale_ratio": 1.7777777777777777,
+  "roll-30_transport_max_deg": 0.0,
+  "roll+37_transport_max_deg": 8.537736462515939e-07,
+  "roll+90_transport_max_deg": 8.537736462515939e-07,
+  "roll_transport_max_deg": 8.537736462515939e-07
+}
